@@ -6,6 +6,14 @@ RUN npm install -g @nestjs/cli
 #  install pnpm
 RUN npm install -g pnpm
 
+
+FROM base AS tester
+# Install basic development tools
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm test
+
 FROM base AS builder
 # Install basic development tools
 COPY package.json pnpm-lock.yaml ./

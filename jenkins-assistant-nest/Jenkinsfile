@@ -34,10 +34,7 @@ def pipeline() {
 
     sh 'env'
   }
-  stage('test') {
-    sh 'cd jenkins-assistant-nest && pnpm install && pnpm test'
-  }
- stage('Build') {
+ stage('Testing & Build') {
       clientImage = docker.build("${env.IMAGE_NAME}", "-f jenkins-assistant-nest/Dockerfile ./jenkins-assistant-nest")
   }
   stage('Push') {
