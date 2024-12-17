@@ -1,20 +1,18 @@
 env.buildColor = ''
-env.targetUrl = 'https:///'
+env.targetUrl = 'https://gitlab.howdesign.com.tw/devops/jenkins-assistant-nest'
 env.namespace='DevOps'
-env.project = 'Admin'
+env.project = 'jenkins-assistant-nest'
 env.GIT_BRANCH = "master"
-env.GIT_URL = 'gitlab.howdesign.com.tw/deer-kids/client-admin.git'
+env.GIT_URL = 'gitlab.howdesign.com.tw/devops/jenkins-assistant-nest.git'
 env.VERSION_TAG = "1.0.${BUILD_NUMBER}"
 env.IMAGE_TAG = 'prod'
-env.IMAGE_NAME = 'asia-east1-docker.pkg.dev/howgroup-devops-2021/deerkids/admin'
-env.credentialsId = 'deerkids_jenkins_gitlab_access'
+env.IMAGE_NAME = 'asia-east1-docker.pkg.dev/howgroup-devops-2021/devops/jenkins-assistant-nest'
 
 node {
   try {
     start()
     pipeline()
     success()
-    version()
   } catch (e) {
     failure(e)
     throw(e)
@@ -36,91 +34,16 @@ def pipeline() {
 
     sh 'env'
   }
-  stage('Code Scan') {
-    def scannerHome = tool 'SonarScanner';
-    withSonarQubeEnv('SonarRemoteServer') {
-      nodejs(nodeJSInstallationName: 'Node18.20.3') {
-        echo "Start Scanning..."
-        sh "${scannerHome}/bin/sonar-scanner -Dproject.settings=deployment/sonar/sonar-project.properties"
-      }
-    }
-    codeScanNotify()
+  stage('test') {
+    sh 'cd jenkins-assistant-nest && pnpm install && pnpm test'
   }
-  stage('Environment') {
-                echo "BUILD_NUMBER = ${env.BUILD_NUMBER}"
-                sh '''
-                  cat <<-EOF > ./deployment/docker/.env 
-                  VITE_MODE=testing
-                  VITE_API="https://dev-deerkids-api.howdigital.com.tw"
-                  VERSION_TAG=$BUILD_NUMBER
-                  '''
-                sh "sed -i 's/^ *//' ./deployment/docker/.env"
-                sh "cat ./deployment/docker/.env"
-        }
  stage('Build') {
-      clientImage = docker.build("${env.IMAGE_NAME}", "-f deployment/docker/Dockerfile .")
+      clientImage = docker.build("${env.IMAGE_NAME}", "-f jenkins-assistant-nest/Dockerfile ./jenkins-assistant-nest")
   }
   stage('Push') {
     withCredentials([file(credentialsId: "cicd-artifact-registry-key", variable: 'GCR_CRED')]){
       sh 'cat "${GCR_CRED}" | docker login -u _json_key --password-stdin https://asia-east1-docker.pkg.dev'
-      docker.image("${env.IMAGE_NAME}").push("${env.IMAGE_TAG}-${env.VERSION_TAG}")
       docker.image("${env.IMAGE_NAME}").push("${env.VERSION_TAG}")
-      docker.image("${env.IMAGE_NAME}").push("${env.IMAGE_TAG}")
     }
   }
-  stage('Release') {
-    dir('release') {
-      withCredentials([usernamePassword(credentialsId: "${env.credentialsId}", usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PWD')]) {
-          retry(3) {
-            try {
-              sh """
-                  git clone -b deployment https://$GIT_USER:$GIT_PWD@${env.GIT_URL} .
-                  \$(cd ./deployment/k8s/overlays/${env.IMAGE_TAG} && \\
-                  kustomize edit set image admin='${env.IMAGE_NAME}:${env.IMAGE_TAG}-${env.VERSION_TAG}' && \\
-                  git add kustomization.yaml)
-                  git commit -m 'Release '${env.IMAGE_NAME}:${env.IMAGE_TAG}-${env.VERSION_TAG}' [skip ci]'
-                  git push -v origin deployment
-                """
-            } catch (e) {
-              echo "推送失敗，正在重試..."
-                sleep(time: 1, unit: 'SECONDS') 
-                throw e  // 確保錯誤會被 retry 捕捉
-            }
-          }
-        }
-      }
-    }
-  }
-
-def start() {
-    slackSend(channel: 'deployment-notifications', color: "${buildColor}", message: """${namespace} ${env.project} ${env.GIT_BRANCH} Environment - BUILD START after ${currentBuild.durationString} (<${env.BUILD_URL}|Open>)
-        :hammer_and_wrench: ${namespace} ${env.project} ${env.GIT_BRANCH} branch :hammer_and_wrench:""")
-}
-
-def failure(e) {
-  echo "Error: ${e}"
-  currentBuild.result = "FAILED"
-  env.buildColor = 'danger'
-  slackSend(channel: 'deployment-notifications', color: "${buildColor}", message: """${namespace} ${env.project} ${env.GIT_BRANCH} Environment - BUILD ${currentBuild.result} after ${currentBuild.durationString.replace(' and counting', '')} (<${env.BUILD_URL}|Open>)
-  :warning: :warning: :warning: ${namespace} admin ${env.GIT_BRANCH} branch :warning: :warning: :warning:""")
-}
-
-def success() {
-    currentBuild.result = "SUCCESS"
-    env.buildColor = 'good'
-    slackSend(channel: 'deployment-notifications', color: "${buildColor}", message: """${namespace} ${env.project} ${env.GIT_BRANCH} Environment - BUILD ${currentBuild.result} after ${currentBuild.durationString.replace(' and counting', '')} (<${env.BUILD_URL}|Open>)
-    :tada: ${namespace} admin ${env.GIT_BRANCH} branch :tada:
-    url: <${targetUrl}|${targetUrl}>""")
-}
-
-def codeScanNotify() {
-    env.buildColor = 'good'
-    slackSend(channel: 'deployment-notifications', color: "${buildColor}", message: """${namespace} ${env.project} ${env.GIT_BRANCH} Environment - Code Scan Completed after ${currentBuild.durationString.replace(' and counting', '')}
-    :tada: ${namespace} ${env.project} ${env.GIT_BRANCH} branch :tada:
-    url: <${sonarQubeUrl}|${sonarQubeUrl}>""")
-}
-
-def version() {
-    env.buildColor = 'good'
-    slackSend(channel: 'deployment-notifications', color: "${buildColor}", message: """[即將發佈] \n 名稱: ${namespace} ${env.project} \n 版本: ${env.VERSION_TAG} \n 環境: ${env.IMAGE_TAG} """)
 }
