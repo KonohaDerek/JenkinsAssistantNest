@@ -18,7 +18,7 @@ export class CliService {
         // 進行 API 請求
         try {
             // 建立azure open ai服務
-            const azureOpenAiService = new AzureOpenAiService(config.azureOpenAiEndpoint, config.azureOpenAiApiKey, config.azureOpenAiAssistantId, config.azureOpenAiModel);
+            const azureOpenAiService = new AzureOpenAiService(config.azureOpenAiEndpoint, config.azureOpenAiApiKey, config.azureOpenAiAssistantId, config.azureOpenAiModel, config.azureOpenAiApiVersion);
             // 創建一個新的對話
             const thread = await azureOpenAiService.createThread();
             this.logger.debug('Created thread:', thread);

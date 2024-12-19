@@ -10,14 +10,12 @@ export class AzureOpenAiService {
     private readonly axiosInstance: AxiosInstance;
     private readonly assistantId: string;
     private readonly model: string;
-    private readonly apiKey: string;
-    private readonly endpoint: string;
+    private readonly apiVersion: string;
 
-    constructor(endpoint: string, apiKey: string, assistantId: string, model: string) {
-        this.endpoint = endpoint;
-        this.apiKey = apiKey;
+    constructor(endpoint: string, apiKey: string, assistantId: string, model: string, apiVersion: string) {
         this.assistantId = assistantId;
         this.model = model || 'gpt-4o-mini';  
+        this.apiVersion = apiVersion || '2024-07-01-preview';
 
         this.axiosInstance = axios.create({
             baseURL: endpoint,
@@ -30,7 +28,7 @@ export class AzureOpenAiService {
 
     public async createThread(): Promise<ThreadsResponse> {
         try {
-            const response = await this.axiosInstance.post('/openai/threads?api-version=2024-05-01-preview',{})
+            const response = await this.axiosInstance.post(`/openai/threads?api-version=${this.apiVersion}`,{})
             this.logger.debug(response.data)
             // 將響應數據映射到 AzureOpenAiResponse 模型
             return new ThreadsResponse(response.data);
@@ -42,7 +40,7 @@ export class AzureOpenAiService {
 
     public async createMessage(threadId: string, message: string): Promise<CreateMessageResponse> {
         try {
-            const response = await this.axiosInstance.post(`/openai/threads/${threadId}/messages?api-version=2024-05-01-preview`, {
+            const response = await this.axiosInstance.post(`/openai/threads/${threadId}/messages?api-version=${this.apiVersion}`, {
                 content: message,
                 role: 'user',
             });
@@ -56,7 +54,7 @@ export class AzureOpenAiService {
 
     public async getMessages(threadId: string): Promise<Array<MessageData>> {
         try {
-            const response = await this.axiosInstance.get(`/openai/threads/${threadId}/messages?api-version=2024-05-01-preview`);
+            const response = await this.axiosInstance.get(`/openai/threads/${threadId}/messages?api-version=${this.apiVersion}`);
             // 將響應數據映射到 AzureOpenAiResponse 模型
             return new MessageResponse(response.data).data;
         } catch (error) {
@@ -68,7 +66,7 @@ export class AzureOpenAiService {
 
     public async createRun(threadId: string): Promise<RunResponse> {
         try {
-            const response = await this.axiosInstance.post(`/openai/threads/${threadId}/runs?api-version=2024-05-01-preview`, {
+            const response = await this.axiosInstance.post(`/openai/threads/${threadId}/runs?api-version=${this.apiVersion}`, {
                 "assistant_id": this.assistantId,
                 "model": this.model,
                 "response_format": "auto",
@@ -82,7 +80,7 @@ export class AzureOpenAiService {
             let runStatus = runResponse.status;
             while (runStatus === 'queued' || runStatus === 'in_progress') {
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                const resp = await this.axiosInstance.get(`/openai/threads/${threadId}/runs/${runResponse.id}?api-version=2024-05-01-preview`);
+                const resp = await this.axiosInstance.get(`/openai/threads/${threadId}/runs/${runResponse.id}?api-version=${this.apiVersion}`);
                 const runStatusResponse = new RunResponse(resp.data);
                 runStatus = runStatusResponse.status;
                 this.logger.debug(`Current run status: ${runStatus}`);

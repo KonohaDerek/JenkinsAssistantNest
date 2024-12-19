@@ -26,7 +26,8 @@ describe('AzureOpenAiService', () => {
                             'https://endpoint.openai.azure.com', // 端點
                             'api_key', // apiKey
                             '123123', // assistantId
-                            'gpt-4o-mini' // 模型
+                            'gpt-4o-mini', // 模型
+                            '2024-07-01-preview', // apiVersion
                         );
                     },
                 },

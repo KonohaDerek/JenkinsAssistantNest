@@ -8,4 +8,5 @@ export const config = {
     azureOpenAiApiKey: process.env.AZURE_OPENAI_API_KEY || 'default_azure_openai_api_key',
     azureOpenAiAssistantId: process.env.AZURE_OPENAI_ASSISTANT_ID || 'default_azure_openai_assistant_id',
     azureOpenAiModel: process.env.AZURE_OPENAI_MODEL || 'gpt-4o-mini',
+    azureOpenAiApiVersion: process.env.AZURE_OPENAI_API_VERSION || '2024-07-01-preview',
 };
