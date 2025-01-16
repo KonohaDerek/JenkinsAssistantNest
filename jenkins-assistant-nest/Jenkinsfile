@@ -35,12 +35,12 @@ def pipeline() {
     sh 'env'
   }
  stage('Testing & Build') {
-      clientImage = docker.build("${env.IMAGE_NAME}", "-f jenkins-assistant-nest/Dockerfile ./jenkins-assistant-nest")
+      clientImage = docker.build("${env.IMAGE_NAME}:{env.IMAGE_TAG}", "-f jenkins-assistant-nest/Dockerfile ./jenkins-assistant-nest")
   }
   stage('Push') {
     withCredentials([file(credentialsId: "cicd-artifact-registry-key", variable: 'GCR_CRED')]){
       sh 'cat "${GCR_CRED}" | docker login -u _json_key --password-stdin https://asia-east1-docker.pkg.dev'
-      docker.image("${env.IMAGE_NAME}").push("${env.VERSION_TAG}")
+      docker.image("${env.IMAGE_NAME}:{env.IMAGE_TAG}").push("${env.VERSION_TAG}")
     }
   }
 }
